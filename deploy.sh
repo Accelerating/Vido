@@ -1,0 +1,98 @@
+#!/bin/bash
+set -e
+
+# ============================================================
+# Vido Deploy Script
+# 1. Install toolchain (nvm + Node.js, pnpm, uv, yt-dlp)
+# 2. Clone repository from GitHub 
+# 3. Install dependencies & build frontend
+# 4. Start backend server
+# ============================================================
+
+# --- Configuration ---
+REPO_URL="https://github.com/Accelerating/Vido.git"   
+APP_DIR="$HOME/vido"
+PORT="${PORT:-8000}"
+
+echo "=== Vido Deploy ==="
+echo ""
+
+# --- nvm + Node.js ---
+echo "--- Installing nvm + Node.js ---"
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    echo "nvm already installed"
+    \. "$NVM_DIR/nvm.sh"
+else
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+    \. "$NVM_DIR/nvm.sh"
+fi
+
+if command -v node &>/dev/null; then
+    echo "Node.js already installed: $(node --version)"
+else
+    nvm install 24
+fi
+echo "Node.js: $(node --version)"
+
+# --- pnpm ---
+echo ""
+echo "--- Enabling pnpm ---"
+corepack enable pnpm
+echo "pnpm: $(pnpm --version)"
+
+# --- uv ---
+echo ""
+echo "--- Installing uv ---"
+if command -v uv &>/dev/null; then
+    echo "uv already installed: $(uv --version)"
+else
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH="$HOME/.local/bin:$PATH"
+    if ! grep -q '.local/bin' ~/.bashrc 2>/dev/null; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    fi
+    echo "uv installed: $(uv --version)"
+fi
+
+# --- yt-dlp ---
+echo ""
+echo "--- Installing yt-dlp ---"
+uv tool install yt-dlp 2>/dev/null || {
+    echo "yt-dlp already installed via uv tool, upgrading..."
+    uv tool upgrade yt-dlp 2>/dev/null || true
+}
+echo "yt-dlp: $(~/.local/bin/yt-dlp --version 2>/dev/null || uvx yt-dlp --version)"
+
+# --- Clone repo ---
+echo ""
+echo "--- Cloning repository ---"
+if [ -d "$APP_DIR" ]; then
+    echo "$APP_DIR already exists, pulling latest..."
+    cd "$APP_DIR"
+    git pull
+else
+    git clone "$REPO_URL" "$APP_DIR"
+    cd "$APP_DIR"
+fi
+
+# --- Frontend ---
+echo ""
+echo "--- Installing frontend dependencies ---"
+cd "$APP_DIR/frontend"
+pnpm install
+
+echo ""
+echo "--- Building frontend ---"
+pnpm build
+
+# --- Backend ---
+echo ""
+echo "--- Installing backend dependencies ---"
+cd "$APP_DIR/backend"
+uv sync
+
+# --- Run ---
+echo ""
+echo "=== Starting Vido on 0.0.0.0:$PORT ==="
+exec uv run uvicorn app.main:app --host 0.0.0.0 --port "$PORT"

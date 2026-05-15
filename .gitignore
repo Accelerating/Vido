@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.db-shm
+*.db-wal
+downloads/
+cookies/
+logs/
+node_modules/
+dist/
+.venv
+.pytest_cache
+.claude/
+*.egg-info/
+backend/static
