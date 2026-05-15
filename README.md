@@ -46,30 +46,15 @@ A self-hosted web service for downloading videos via yt-dlp, with offline playba
 
 ## Quick Start
 
-The `deploy.sh` script does everything in one shot — install system dependencies, clone the repo, build the frontend, and start the server.
-
-First, fill in your GitHub repository URL at the top of `deploy.sh`:
+One command to deploy Vido on a fresh machine:
 
 ```bash
-REPO_URL="<your-github-repo-url>"   # TODO: fill in your repo URL
+curl -fsSL https://raw.githubusercontent.com/Accelerating/Vido/refs/heads/main/deploy.sh | bash
 ```
 
-Then run it:
+This downloads and runs the deploy script, which installs all system dependencies (nvm + Node.js 24, pnpm, uv, yt-dlp), clones the repository, builds the frontend, and starts the server on `http://localhost:8000`.
 
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-The script will:
-
-1. Install nvm + Node.js 24, pnpm, uv, and yt-dlp
-2. Clone the repository (or `git pull` if already cloned)
-3. `pnpm install && pnpm build` the frontend
-4. `uv sync` the backend
-5. Start the server on `http://localhost:8000`
-
-The server will be available at `http://localhost:8000`.
+After the first deployment, re-running the same command will `git pull` the latest changes and rebuild automatically — no manual update steps needed.
 
 ## Development
 

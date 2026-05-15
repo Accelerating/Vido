@@ -44,28 +44,21 @@
 
 ## 快速开始
 
-`deploy.sh` 一键完成所有部署步骤——安装系统依赖、克隆仓库、构建前端、启动服务。
-
-首先，在 `deploy.sh` 顶部填好你的 GitHub 仓库地址：
+在全新机器上，一条命令即可完成部署：
 
 ```bash
-REPO_URL="<your-github-repo-url>"   # TODO: 填入你的仓库地址
+curl -fsSL https://raw.githubusercontent.com/Accelerating/Vido/refs/heads/main/deploy.sh | bash
 ```
 
-然后运行：
-
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-脚本会自动完成以下步骤：
+该命令会下载并运行部署脚本，自动完成以下步骤：
 
 1. 安装 nvm + Node.js 24、pnpm、uv、yt-dlp
 2. 克隆仓库（若已存在则 `git pull` 更新）
 3. `pnpm install && pnpm build` 构建前端
 4. `uv sync` 安装后端依赖
 5. 启动服务，访问 `http://localhost:8000`
+
+后续如需更新，重新执行同一条命令即可，脚本会自动拉取最新代码并重新构建。
 
 ## 开发指南
 
