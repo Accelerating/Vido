@@ -109,4 +109,24 @@ uv sync
 # --- Run ---
 echo ""
 echo "=== Starting Vido on 0.0.0.0:$PORT ==="
-exec uv run uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+
+LOG_FILE="$APP_DIR/backend/vido.log"
+PID_FILE="$APP_DIR/backend/vido.pid"
+
+# Kill previous instance if running
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "Stopping previous instance (PID $OLD_PID)..."
+        kill "$OLD_PID"
+        sleep 2
+    fi
+fi
+
+cd "$APP_DIR/backend"
+nohup uv run uvicorn app.main:app --host 0.0.0.0 --port "$PORT" > "$LOG_FILE" 2>&1 &
+echo $! > "$PID_FILE"
+
+echo "Vido started (PID $(cat $PID_FILE))"
+echo "  Logs:  tail -f $LOG_FILE"
+echo "  Stop:  kill $(cat $PID_FILE)"
