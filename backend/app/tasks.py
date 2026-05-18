@@ -266,6 +266,11 @@ async def _run_download(task_id: int):
     fmt = quality_map.get(row["quality"], "bestvideo[height<=1080]+bestaudio/best[height<=1080]")
     if row["format"]:
         fmt = row["format"]
+        # Single format codes (e.g. "136") are usually video-only. Merge with
+        # best audio so the output has sound. Combined codes (with "+") are
+        # already complete. Quality presets already include "+bestaudio".
+        if "+" not in fmt:
+            fmt = f"{fmt}+bestaudio/best"
 
     cookie_path = None
     if row["cookie_profile_id"]:
@@ -276,7 +281,7 @@ async def _run_download(task_id: int):
         if cookie_row and cookie_row["cookie_data"] and os.path.exists(cookie_row["cookie_data"]):
             cookie_path = cookie_row["cookie_data"]
 
-    # Resolve format description and auto-add audio for video-only formats
+    # Resolve format description for logging
     format_desc = ""
     try:
         list_cmd = [_ytdlp_path(), "--js-runtimes", "node", "--remote-components", "ejs:github",
@@ -304,9 +309,6 @@ async def _run_download(task_id: int):
                     if f["note"]:
                         parts.append(f["note"])
                     format_desc = ", ".join(parts)
-                    # If user selected a video-only format, merge with best audio
-                    if f["acodec"] == "video only":
-                        fmt = f"{fmt}+bestaudio/best"
                     break
     except Exception:
         pass
