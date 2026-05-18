@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 
 from app.database import init_db, close_db, get_db
-from app.config import STATIC_DIR
+from app.config import COOKIES_DIR, DOWNLOADS_DIR, LOGS_DIR, STATIC_DIR
 
 
 def create_app() -> FastAPI:
@@ -11,6 +11,8 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup():
         init_db()
+        for d in (DOWNLOADS_DIR, LOGS_DIR, COOKIES_DIR):
+            os.makedirs(d, exist_ok=True)
         db = get_db()
         db.execute(
             "UPDATE download_tasks SET status = 'failed', "
