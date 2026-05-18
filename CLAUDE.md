@@ -1,78 +1,65 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## Project overview
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-Vido is a self-hosted web service for downloading videos via yt-dlp, with offline playback, task management, cookie profile management, and per-user authentication. It runs as a single FastAPI process serving both the API and the built React frontend.
+## 1. Think Before Coding
 
-## Commands
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-### Backend (Python / FastAPI)
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-```bash
-cd backend
-uv sync                           # install dependencies
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000   # dev server
-uv run pytest -v                  # run all tests
-uv run pytest -v tests/test_auth.py -k test_register       # run a single test
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
 ```
 
-Key dependencies: FastAPI, bcrypt, and a system-installed `yt-dlp` (managed via `uv tool install yt-dlp`).
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-### Frontend (React / Vite)
+---
 
-```bash
-cd frontend
-pnpm install                      # install dependencies
-pnpm dev                          # Vite dev server (proxies /api to 127.0.0.1:8000)
-pnpm build                        # type-check + build into ../backend/static/
-pnpm lint                         # ESLint
-```
-
-### Full deployment
-
-```bash
-./deploy.sh                       # install toolchain, clone repo, build frontend, start backend
-```
-
-`deploy.sh` is the all-in-one deployment script: it installs nvm + Node.js, pnpm, uv, and yt-dlp, clones the repository from GitHub (or `git pull` if already cloned), builds the frontend into `backend/static/`, and starts uvicorn. The backend serves these static files via a catch-all route — no separate web server is needed.
-
-## Architecture
-
-### Backend (`backend/app/`)
-
-**Single-process, thread-local SQLite.** `database.py` creates a new connection per thread via `threading.local()`. The test env var `VIDO_TEST=1` switches the db path to `test_vido.db` so tests don't touch production data.
-
-**Auth is cookie-based.** On login/register, a random UUID token is inserted into `auth_tokens` and set as an `httponly` cookie. `get_current_user` is a FastAPI dependency that reads the cookie, looks up the token join, and injects the user dict (including `_token` for logout). All protected routes use the `CurrentUser` annotated dependency.
-
-**yt-dlp runs as a subprocess** (not a Python library). `tasks.py:_run_download` runs `yt-dlp` via `asyncio.create_subprocess_exec` in a background asyncio task. It writes logs to `backend/logs/{user_id}/{task_id}.log` and downloads to `backend/downloads/{user_id}/{task_id}/`. On startup, any `downloading` tasks are marked as `failed` with "Server restarted".
-
-**Router pattern:** Each feature module (`auth.py`, `tasks.py`, `videos.py`, `cookies.py`, `stats.py`, `system.py`, `users.py`) defines its own `APIRouter` and is included in `main.py:create_app()`.
-
-**Database tables (SQLite):** `users` (with `is_admin` flag), `auth_tokens`, `cookie_profiles`, `download_tasks`, `video_files`. Cookie content is stored as files on disk (under `backend/cookies/{user_id}/{profile_id}.txt`) with the file path stored in `cookie_profiles.cookie_data`.
-
-**Auth & admin:** Registration is only open when the `users` table is empty. The first registered user automatically becomes admin (`is_admin = 1`). Admin-only endpoints use the `CurrentAdminUser` dependency (checks `is_admin`). Login is rate-limited: 5 failed attempts from the same IP within 10 minutes triggers a 1-hour lockout (in-memory, 429 status).
-
-### Frontend (`frontend/src/`)
-
-**Stack:** React 19, react-router v7, TanStack Query, Tailwind CSS v4, shadcn/ui components.
-
-**Auth flow:** `useAuth` context hydrates from `GET /api/auth/me` on mount. `ProtectedRoute` redirects to `/login` if unauthenticated.
-
-**API client** (`api/client.ts`): thin wrappers around `fetch` with `credentials: "include"` for cookie auth.
-
-**i18n:** Custom `I18nProvider` context with zh/en translations in `i18n/translations.ts`. Language persisted to `localStorage`.
-
-**Build output** goes to `../backend/static/` (configured in `vite.config.ts`). The Vite dev server proxies `/api` to `http://127.0.0.1:8000`.
-
-### Testing
-
-Tests live in `backend/tests/` with pytest. `conftest.py` sets `VIDO_TEST=1`, creates a fresh test DB, and tears it down after each test. Uses `fastapi.testclient.TestClient`. No frontend tests exist currently.
-
-## Key conventions
-
-- yt-dlp path resolution: checks `$VIRTUAL_ENV/bin/yt-dlp` first, then falls back to `shutil.which("yt-dlp")`
-- Task status lifecycle: `pending` → `downloading` → `completed` / `failed`
-- Format parsing: `tasks.py:_parse_formats` parses yt-dlp's tabular `--list-formats` text output by splitting lines and columns
-- Cookie profiles support two import methods: `file_upload` (upload a Netscape-format cookie file) or `paste` (paste raw cookie text)
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
