@@ -55,6 +55,20 @@ else
     echo "uv installed: $(uv --version)"
 fi
 
+# --- ffmpeg ---
+echo ""
+echo "--- Installing ffmpeg ---"
+if command -v ffmpeg &>/dev/null; then
+    echo "ffmpeg already installed: $(ffmpeg -version 2>&1 | head -1)"
+elif command -v brew &>/dev/null; then
+    brew install ffmpeg
+elif command -v apt-get &>/dev/null; then
+    sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+else
+    echo "WARNING: ffmpeg not found and no supported package manager detected."
+    echo "Please install ffmpeg manually: https://ffmpeg.org/download.html"
+fi
+
 # --- yt-dlp ---
 echo ""
 echo "--- Installing yt-dlp ---"

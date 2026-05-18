@@ -267,18 +267,6 @@ async def _run_download(task_id: int):
     if row["format"]:
         fmt = row["format"]
 
-    cmd = [
-        _ytdlp_path(),
-        "--js-runtimes", "node",
-        "--remote-components", "ejs:github",
-        "-f", fmt,
-        "-o", output_template,
-        "--write-thumbnail",
-        "--convert-thumbnails", "jpg",
-        "--no-mtime",
-        row["url"],
-    ]
-
     cookie_path = None
     if row["cookie_profile_id"]:
         cookie_row = db.execute(
@@ -287,9 +275,8 @@ async def _run_download(task_id: int):
         ).fetchone()
         if cookie_row and cookie_row["cookie_data"] and os.path.exists(cookie_row["cookie_data"]):
             cookie_path = cookie_row["cookie_data"]
-            cmd.extend(["--cookies", cookie_path])
 
-    # Resolve format description
+    # Resolve format description and auto-add audio for video-only formats
     format_desc = ""
     try:
         list_cmd = [_ytdlp_path(), "--js-runtimes", "node", "--remote-components", "ejs:github",
@@ -317,9 +304,26 @@ async def _run_download(task_id: int):
                     if f["note"]:
                         parts.append(f["note"])
                     format_desc = ", ".join(parts)
+                    # If user selected a video-only format, merge with best audio
+                    if f["acodec"] == "video only":
+                        fmt = f"{fmt}+bestaudio/best"
                     break
     except Exception:
         pass
+
+    cmd = [
+        _ytdlp_path(),
+        "--js-runtimes", "node",
+        "--remote-components", "ejs:github",
+        "-f", fmt,
+        "-o", output_template,
+        "--write-thumbnail",
+        "--convert-thumbnails", "jpg",
+        "--no-mtime",
+        row["url"],
+    ]
+    if cookie_path:
+        cmd.extend(["--cookies", cookie_path])
 
     log_lines = [f"=== FORMAT: {fmt}" + (f" ({format_desc})" if format_desc else "") + " ===\n"]
     log_lines.append(f"=== COMMAND ===\n{' '.join(cmd)}\n")

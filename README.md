@@ -2,7 +2,7 @@
 
 [中文文档](README_zh.md)
 
-A self-hosted web service for downloading videos via yt-dlp, with offline playback, download task management, cookie profile management, and per-user authentication.
+A self-hosted web service for downloading videos via yt-dlp, with online playback, download task management, cookie profile management, and per-user authentication.
 
 ## Features
 
