@@ -11,7 +11,7 @@ A self-hosted web service for downloading videos via yt-dlp, with online playbac
 - **Offline playback** — stream downloaded videos directly in the browser
 - **Task management** — track download progress, cancel tasks, view logs
 - **Cookie profiles** — import Netscape-format cookies (file upload or paste) for authenticated downloads
-- **Multi-user** — register/login with cookie-based auth, each user has isolated tasks and files
+- **Multi-user** — private deployment model: registration is only open when no users exist. The first registered user becomes the admin, who can then manage other users (create, edit, delete) via the admin panel
 - **i18n** — English and Chinese UI
 
 ## Dependencies
@@ -22,6 +22,7 @@ A self-hosted web service for downloading videos via yt-dlp, with online playbac
 - **Node.js >= 24** (for building the frontend)
 - **pnpm** (enabled via corepack or installed globally)
 - **uv** (Python package manager)
+- **ffmpeg** (for merging video and audio streams)
 
 ### Backend
 
